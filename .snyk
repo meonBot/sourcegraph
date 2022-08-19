@@ -1,0 +1,167 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+ignore: {}
+# patches apply the minimum changes required to fix a vulnerability
+patch:
+  SNYK-JS-AXIOS-174505:
+    - '@percy/puppeteer > @percy/agent > axios':
+        patched: '2022-08-19T08:20:57.666Z'
+  SNYK-JS-LODASH-567746:
+    - babel-plugin-lodash > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - enzyme-to-json > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - eslint > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - json-schema-to-typescript > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - node-sass > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - stylelint > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - babel-plugin-lodash > @babel/types > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@sourcegraph/eslint-config > eslint-plugin-jsdoc > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@sourcegraph/eslint-config > eslint-plugin-unicorn > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@sourcegraph/stylelint-config > stylelint-scss > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addon-knobs > react-color > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/core > html-webpack-plugin > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/core > inquirer > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addon-storyshots-puppeteer > jest-image-snapshot > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/react > babel-plugin-react-docgen > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - babel-preset-react-app > @babel/core > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - enzyme > cheerio > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - eslint > table > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - stylelint > table > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - mocha > yargs-unparser > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - node-sass > sass-graph > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - optimize-css-assets-webpack-plugin > last-call-webpack-plugin > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - stylelint > postcss-reporter > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > firefox-profile > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - webpack-dev-server > http-proxy-middleware > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/react > @storybook/core > @storybook/ui > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - babel-jest > @jest/transform > @babel/core > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - babel-preset-react-app > @babel/preset-env > @babel/plugin-transform-block-scoping > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - nyc > istanbul-lib-instrument > @babel/core > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - stylelint > @stylelint/postcss-css-in-js > @babel/core > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/core > @storybook/channel-postmessage > telejson > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - jsdom > request-promise-native > request-promise-core > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addon-knobs > react-color > reactcss > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/react > @storybook/core > html-webpack-plugin > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/react > @storybook/core > inquirer > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/react > react-dev-utils > inquirer > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > babel-plugin-react-docgen > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > addons-linter > cheerio > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - ts-graphql-plugin > graphql-language-service-types > graphql-config > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - node-sass > gaze > globule > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > addons-linter > eslint > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - webpack-dev-server > portfinder > async > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > firefox-profile > archiver > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > firefox-profile > async > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > @storybook/core > @storybook/ui > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - nyc > istanbul-lib-instrument > @babel/core > @babel/helper-module-transforms > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - stylelint > @stylelint/postcss-css-in-js > @babel/core > @babel/helper-module-transforms > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@sourcegraph/eslint-config > eslint-plugin-rxjs > rxjs-report-usage > @babel/traverse > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - jest > @jest/core > jest-snapshot > @babel/types > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - babel-jest > @jest/transform > @babel/core > @babel/helper-module-transforms > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - jest > @jest/core > @jest/transform > @babel/core > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - babel-preset-react-app > @babel/preset-env > @babel/plugin-transform-classes > @babel/helper-define-map > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@percy/puppeteer > @percy/agent > @oclif/plugin-not-found > cli-ux > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-info > @storybook/addons > @storybook/api > telejson > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > @storybook/core > html-webpack-plugin > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > @storybook/core > inquirer > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > react-dev-utils > inquirer > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > addons-linter > eslint > inquirer > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > addons-linter > eslint > table > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - ts-graphql-plugin > graphql-language-service-types > graphql-config > graphql-import > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > addons-linter > eslint-plugin-no-unsafe-innerhtml > eslint > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > firefox-profile > archiver > archiver-utils > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > firefox-profile > archiver > async > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > firefox-profile > archiver > zip-stream > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/theming > @emotion/styled > babel-plugin-emotion > @babel/helper-module-imports > @babel/types > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > @storybook/core > @storybook/ui > @storybook/components > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@sourcegraph/eslint-config > eslint-plugin-rxjs > rxjs-report-usage > @babel/traverse > @babel/generator > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - jest > @jest/core > @jest/transform > @babel/core > @babel/helper-module-transforms > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@percy/storybook > @percy/react-percy-api-client > percy-client > request-promise > request-promise-core > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > @storybook/addons > @storybook/api > telejson > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > addons-linter > eslint-plugin-no-unsafe-innerhtml > eslint > inquirer > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - web-ext > addons-linter > eslint-plugin-no-unsafe-innerhtml > eslint > table > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addon-knobs > react-select > @emotion/css > babel-plugin-emotion > @babel/helper-module-imports > @babel/types > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addon-info > @storybook/theming > @emotion/styled > babel-plugin-emotion > @babel/helper-module-imports > @babel/types > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@types/storybook__addon-storyshots > @storybook/react > @storybook/core > @babel/preset-env > @babel/plugin-transform-classes > @babel/helper-define-map > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addon-actions > react-inspector > storybook-chromatic > jsdom > request-promise-native > request-promise-core > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addons > @storybook/api > @storybook/theming > @emotion/styled > babel-plugin-emotion > @babel/helper-module-imports > @babel/types > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
+    - jest > @jest/core > jest-config > jest-environment-jsdom > jsdom > request-promise-native > request-promise-core > lodash:
+        patched: '2022-08-19T08:20:57.666Z'
+    - '@storybook/addon-options > @storybook/addons > @storybook/api > @storybook/theming > @emotion/styled > babel-plugin-emotion > @babel/helper-module-imports > @babel/types > lodash':
+        patched: '2022-08-19T08:20:57.666Z'
