@@ -12,19 +12,16 @@ fi
 
 IMAGE=sourcegraph/grafana:dev
 CONTAINER=grafana
-
-# quickly build image - should do this because the image has a Sourcegraph wrapper program
-# see /docker-images/grafana/cmd/grafana-wrapper for more details
-IMAGE=${IMAGE} CACHE=true ./docker-images/grafana/build.sh >/dev/null 2>&1
+PORT=3370
 
 # docker containers must access things via docker host on non-linux platforms
-CONFIG_SUB_DIR="all"
-SRC_FRONTEND_INTERNAL="host.docker.internal:3090"
 DOCKER_USER=""
-DOCKER_NET=""
+ADD_HOST_FLAG=""
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
-  CONFIG_SUB_DIR="linux"
+  # Linux needs an extra arg to support host.internal.docker, which is how grafana connects
+  # to the prometheus backend.
+  ADD_HOST_FLAG="--add-host=host.docker.internal:host-gateway"
 
   # Docker users on Linux will generally be using direct user mapping, which
   # means that they'll want the data in the volume mount to be owned by the
@@ -32,20 +29,9 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
   # doesn't really care what user it runs as, so long as it can write to
   # /var/lib/grafana.
   DOCKER_USER="--user=$UID"
-
-  # Frontend generally runs outside of Docker, so to access it we need to be
-  # able to access ports on the host. --net=host is a very dirty way of
-  # enabling this.
-  DOCKER_NET="--net=host"
-  SRC_FRONTEND_INTERNAL="localhost:3090"
 fi
 
 docker inspect $CONTAINER >/dev/null 2>&1 && docker rm -f $CONTAINER
-
-# Generate Grafana dashboards
-pushd monitoring
-DEV=true RELOAD=false go generate
-popd
 
 # Log file location: since we log outside of the Docker container, we should
 # log somewhere that's _not_ ~/.sourcegraph-dev/data/grafana, since that gets
@@ -58,6 +44,11 @@ mkdir -p "${GRAFANA_LOGS}"
 # We want to capture that output, but because it's fairly noisy, don't want to
 # display it in the normal case.
 GRAFANA_LOG_FILE="${GRAFANA_LOGS}/grafana.log"
+
+# Quickly build image
+echo "Grafana: building ${IMAGE}..."
+IMAGE=${IMAGE} CACHE=true ./docker-images/grafana/build.sh >"${GRAFANA_LOG_FILE}" 2>&1 ||
+  (BUILD_EXIT_CODE=$? && echo "Grafana build failed; dumping log:" && cat "${GRAFANA_LOG_FILE}" && exit $BUILD_EXIT_CODE)
 
 function finish() {
   GRAFANA_EXIT_CODE=$?
@@ -74,16 +65,16 @@ function finish() {
   return $GRAFANA_EXIT_CODE
 }
 
-docker run --rm ${DOCKER_NET} ${DOCKER_USER} \
+echo "Grafana: serving on http://localhost:${PORT}"
+echo "Grafana: note that logs are piped to ${GRAFANA_LOG_FILE}"
+docker run --rm ${DOCKER_USER} \
   --name=${CONTAINER} \
   --cpus=1 \
   --memory=1g \
-  -p 0.0.0.0:3370:3370 \
+  -p 0.0.0.0:3370:3370 ${ADD_HOST_FLAG} \
   -v "${GRAFANA_DISK}":/var/lib/grafana \
-  -v "$(pwd)"/dev/grafana/${CONFIG_SUB_DIR}:/sg_config_grafana/provisioning/datasources \
+  -v "$(pwd)"/dev/grafana/all:/sg_config_grafana/provisioning/datasources \
   -v "$(pwd)"/docker-images/grafana/config/provisioning/dashboards:/sg_grafana_additional_dashboards \
-  -v "$(pwd)"/docker-images/grafana/jsonnet:/sg_grafana_additional_dashboards/legacy \
-  -e SRC_FRONTEND_INTERNAL="${SRC_FRONTEND_INTERNAL}" \
   -e DISABLE_SOURCEGRAPH_CONFIG="${DISABLE_SOURCEGRAPH_CONFIG:-'false'}" \
   ${IMAGE} >"${GRAFANA_LOG_FILE}" 2>&1 || finish
 

@@ -1,0 +1,19 @@
+[
+  "subscribe",
+  ".",
+  "gochangewatch",
+  {
+    "expression": [
+      "allof",
+      ["not", ["anyof", ["match", ".*"], ["suffix", "_test.go"], ["dirname", "dev"]]],
+      [
+        "anyof",
+        ["suffix", "go"],
+        ["name", "cmd/frontend/graphqlbackend/*.graphql", "wholename"],
+        ["dirname", "monitoring"],
+        ["match", "schema/*.json", "wholename"]
+      ]
+    ],
+    "fields": ["name"]
+  }
+]

@@ -10,32 +10,40 @@ PROMETHEUS_DISK="${HOME}/.sourcegraph-dev/data/prometheus"
 if [ ! -e "${PROMETHEUS_DISK}" ]; then
   mkdir -p "${PROMETHEUS_DISK}"
 fi
-
-IMAGE=sourcegraph/prometheus:61407_2020-04-18_9aa5791@sha256:9b31cc8832defb66cd29e5a298422983179495193745324902660073b3fdc835
+IMAGE=sourcegraph/prometheus:dev
 CONTAINER=prometheus
+PORT=9090
 
 CONFIG_DIR="$(pwd)/docker-images/prometheus/config"
 DOCKER_NET=""
 DOCKER_USER=""
 PROM_TARGETS="dev/prometheus/all/prometheus_targets.yml"
+SRC_FRONTEND_INTERNAL="host.docker.internal:3090"
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
   DOCKER_USER="--user=$UID"
-  DOCKER_NET="--net=host"
   PROM_TARGETS="dev/prometheus/linux/prometheus_targets.yml"
+
+  # Frontend generally runs outside of Docker, so to access it we need to be
+  # able to access ports on the host. --net=host is a very dirty way of
+  # enabling this.
+  DOCKER_NET="--net=host"
+  SRC_FRONTEND_INTERNAL="localhost:3090"
 fi
 
 docker inspect $CONTAINER >/dev/null 2>&1 && docker rm -f $CONTAINER
 
 cp ${PROM_TARGETS} "${CONFIG_DIR}"/prometheus_targets.yml
 
-pushd monitoring
-DEV=true RELOAD=false go generate
-popd
-
+# Avoid cluttering dev/start.sh log output
 PROMETHEUS_LOGS="${HOME}/.sourcegraph-dev/logs/prometheus"
 mkdir -p "${PROMETHEUS_LOGS}"
 PROMETHEUS_LOG_FILE="${PROMETHEUS_LOGS}/prometheus.log"
+
+# Quickly build image
+echo "Prometheus: building ${IMAGE}..."
+IMAGE=${IMAGE} CACHE=true ./docker-images/prometheus/build.sh >"${PROMETHEUS_LOG_FILE}" 2>&1 ||
+  (BUILD_EXIT_CODE=$? && echo "Prometheus build failed; dumping log:" && cat "${PROMETHEUS_LOG_FILE}" && exit $BUILD_EXIT_CODE)
 
 function finish() {
   PROMETHEUS_EXIT_CODE=$?
@@ -49,6 +57,8 @@ function finish() {
   return $PROMETHEUS_EXIT_CODE
 }
 
+echo "Prometheus: serving on http://localhost:${PORT}"
+echo "Prometheus: note that logs are piped to ${PROMETHEUS_LOG_FILE}"
 docker run --rm ${DOCKER_NET} ${DOCKER_USER} \
   --name=${CONTAINER} \
   --cpus=1 \
@@ -56,5 +66,7 @@ docker run --rm ${DOCKER_NET} ${DOCKER_USER} \
   -p 0.0.0.0:9090:9090 \
   -v "${PROMETHEUS_DISK}":/prometheus \
   -v "${CONFIG_DIR}":/sg_prometheus_add_ons \
-  -e PROMETHEUS_ADDITIONAL_FLAGS=--web.enable-lifecycle \
+  -e SRC_FRONTEND_INTERNAL="${SRC_FRONTEND_INTERNAL}" \
+  -e DISABLE_SOURCEGRAPH_CONFIG="${DISABLE_SOURCEGRAPH_CONFIG:-""}" \
+  -e DISABLE_ALERTMANAGER="${DISABLE_ALERTMANAGER:-""}" \
   ${IMAGE} >"${PROMETHEUS_LOG_FILE}" 2>&1 || finish

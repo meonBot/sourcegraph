@@ -12,9 +12,8 @@ import (
 
 func TestServer_handleGet(t *testing.T) {
 	conn := []*schema.GitoliteConnection{{
-		Blacklist: "isblaclist.*",
-		Prefix:    "mygitolite.host/",
-		Host:      "git@mygitolite.host",
+		Prefix: "mygitolite.host/",
+		Host:   "git@mygitolite.host",
 		Phabricator: &schema.Phabricator{
 			CallsignCommand: `echo ${REPO} | tr a-z A-Z`,
 			Url:             "https://phab.mycompany.com",
@@ -27,7 +26,7 @@ func TestServer_handleGet(t *testing.T) {
 		}
 		return json.Unmarshal(buf, result)
 	}
-	defer func() { api.MockExternalServiceConfigs = nil }()
+	t.Cleanup(func() { api.MockExternalServiceConfigs = nil })
 
 	s := &Server{ReposDir: "/testroot"}
 	h := s.Handler()
@@ -57,9 +56,8 @@ func TestServer_handleGet(t *testing.T) {
 
 func TestServer_handleGet_invalid(t *testing.T) {
 	conn := []*schema.GitoliteConnection{{
-		Blacklist: "isblaclist.*",
-		Prefix:    "mygitolite.host/",
-		Host:      "git@mygitolite.host",
+		Prefix: "mygitolite.host/",
+		Host:   "git@mygitolite.host",
 		Phabricator: &schema.Phabricator{
 			CallsignCommand: `echo "Something went wrong this is not a valid callsign"`,
 		},
@@ -71,7 +69,7 @@ func TestServer_handleGet_invalid(t *testing.T) {
 		}
 		return json.Unmarshal(buf, result)
 	}
-	defer func() { api.MockExternalServiceConfigs = nil }()
+	t.Cleanup(func() { api.MockExternalServiceConfigs = nil })
 
 	s := &Server{ReposDir: "/testroot"}
 	h := s.Handler()

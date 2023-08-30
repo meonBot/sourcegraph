@@ -1,18 +1,22 @@
 package query
 
 import (
-	"strings"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/sourcegraph/sourcegraph/internal/search/query/types"
 )
 
 func TestAndOrQuery_Validation(t *testing.T) {
 	cases := []struct {
-		input string
-		want  string
+		input      string
+		searchType SearchType // nil value is regexp
+		want       string
 	}{
+		{
+			input: "index:foo",
+			want:  `invalid value "foo" for field "index". Valid values are: yes, only, no`,
+		},
 		{
 			input: "case:yes case:no",
 			want:  `field "case" may not be used more than once`,
@@ -30,10 +34,6 @@ func TestAndOrQuery_Validation(t *testing.T) {
 			want:  `unknown language: "stephenhas9cats"`,
 		},
 		{
-			input: "stable:???",
-			want:  `invalid boolean "???"`,
-		},
-		{
 			input: "count:sedonuts",
 			want:  "field count has value sedonuts, sedonuts is not a number",
 		},
@@ -45,12 +45,76 @@ func TestAndOrQuery_Validation(t *testing.T) {
 			input: "count:-1",
 			want:  "field count requires a positive number",
 		},
+		{
+			input: "+",
+			want:  "error parsing regexp: missing argument to repetition operator: `+`",
+		},
+		{
+			input: `\\\`,
+			want:  "error parsing regexp: trailing backslash at end of expression: ``",
+		},
+		{
+			input:      `-content:"foo"`,
+			want:       "the query contains a negated search pattern. Structural search does not support negated search patterns at the moment",
+			searchType: SearchTypeStructural,
+		},
+		{
+			input:      `NOT foo`,
+			want:       "the query contains a negated search pattern. Structural search does not support negated search patterns at the moment",
+			searchType: SearchTypeStructural,
+		},
+		{
+			input: "repo:foo rev:a rev:b",
+			want:  `field "rev" may not be used more than once`,
+		},
+		{
+			input: "repo:foo@a rev:b",
+			want:  "invalid syntax. You specified both @ and rev: for a repo: filter and I don't know how to interpret this. Remove either @ or rev: and try again",
+		},
+		{
+			input: "rev:this is a good channel",
+			want:  "invalid syntax. The query contains `rev:` without `repo:`. Add a `repo:` filter and try again",
+		},
+		{
+			input: `repo:'' rev:bedge`,
+			want:  "invalid syntax. The query contains `rev:` without `repo:`. Add a `repo:` filter and try again",
+		},
+		{
+			input: "repo:foo author:rob@saucegraph.com",
+			want:  `your query contains the field 'author', which requires type:commit or type:diff in the query`,
+		},
+		{
+			input: "repohasfile:README type:symbol yolo",
+			want:  "repohasfile is not compatible for type:symbol. Subscribe to https://github.com/sourcegraph/sourcegraph/issues/4610 for updates",
+		},
+		{
+			input: "foo context:a context:b",
+			want:  `field "context" may not be used more than once`,
+		},
+		{
+			input: "-context:a",
+			want:  `field "context" does not support negation`,
+		},
+		{
+			input: "type:symbol select:symbol.timelime",
+			want:  `invalid field "timelime" on select path "symbol.timelime"`,
+		},
+		{
+			input:      "nice try type:repo",
+			want:       "this structural search query specifies `type:` and is not supported. Structural search syntax only applies to searching file contents",
+			searchType: SearchTypeStructural,
+		},
+		{
+			input:      "type:diff nice try",
+			want:       "this structural search query specifies `type:` and is not supported. Structural search syntax only applies to searching file contents and is not currently supported for diff searches",
+			searchType: SearchTypeStructural,
+		},
 	}
 	for _, c := range cases {
 		t.Run("validate and/or query", func(t *testing.T) {
-			_, err := ProcessAndOr(c.input, SearchTypeRegex)
+			_, err := Pipeline(Init(c.input, c.searchType))
 			if err == nil {
-				t.Fatal("expected test to fail")
+				t.Fatal(fmt.Sprintf("expected test for %s to fail", c.input))
 			}
 			if diff := cmp.Diff(c.want, err.Error()); diff != "" {
 				t.Fatal(diff)
@@ -85,7 +149,7 @@ func TestAndOrQuery_IsCaseSensitive(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			query, err := ProcessAndOr(c.input, SearchTypeRegex)
+			query, err := ParseRegexp(c.input)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -115,7 +179,7 @@ func TestAndOrQuery_RegexpPatterns(t *testing.T) {
 		},
 	}
 	t.Run("for regexp field", func(t *testing.T) {
-		query, err := ProcessAndOr(c.query, SearchTypeRegex)
+		query, err := ParseRegexp(c.query)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,23 +191,6 @@ func TestAndOrQuery_RegexpPatterns(t *testing.T) {
 			t.Error(diff)
 		}
 	})
-}
-
-func TestAndOrQuery_CaseInsensitiveFields(t *testing.T) {
-	query, err := ProcessAndOr("repoHasFile:foo", SearchTypeRegex)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	values, _ := query.RegexpPatterns(FieldRepoHasFile)
-	if len(values) != 1 || values[0] != "foo" {
-		t.Errorf("unexpected values: want {\"foo\"}, got %v", values)
-	}
-
-	fields := types.Fields(query.Fields())
-	if got, want := fields.String(), `repohasfile~"foo"`; got != want {
-		t.Errorf("unexpected parsed query:\ngot:  %s\nwant: %s", got, want)
-	}
 }
 
 func TestPartitionSearchPattern(t *testing.T) {
@@ -177,7 +224,7 @@ func TestPartitionSearchPattern(t *testing.T) {
 		},
 		{
 			input: "file:foo (x y)",
-			want:  `"file:foo" (concat "(x" "y)")`,
+			want:  `"file:foo" "(x y)"`,
 		},
 		{
 			input: "(file:foo x) y",
@@ -218,7 +265,7 @@ func TestPartitionSearchPattern(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run("partition search pattern", func(t *testing.T) {
-			q, _ := ParseAndOr(tt.input)
+			q, _ := Parse(tt.input, SearchTypeRegex)
 			scopeParameters, pattern, err := PartitionSearchPattern(q)
 			if err != nil {
 				if diff := cmp.Diff(tt.want, err.Error()); diff != "" {
@@ -226,31 +273,15 @@ func TestPartitionSearchPattern(t *testing.T) {
 				}
 				return
 			}
-			result := scopeParameters
+			result := ToNodes(scopeParameters)
 			if pattern != nil {
-				result = append(scopeParameters, pattern)
+				result = append(result, pattern)
 			}
-			var resultStr []string
-			for _, node := range result {
-				resultStr = append(resultStr, node.String())
-			}
-			got := strings.Join(resultStr, " ")
+			got := toString(result)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Error(diff)
 			}
 		})
-	}
-}
-
-func TestContainsAndOrKeyword(t *testing.T) {
-	if !ContainsAndOrKeyword("foo OR bar") {
-		t.Errorf("Expected query to contain keyword")
-	}
-	if !ContainsAndOrKeyword("repo:foo AND bar") {
-		t.Errorf("Expected query to contain keyword")
-	}
-	if ContainsAndOrKeyword("repo:foo bar") {
-		t.Errorf("Did not expect query to contain keyword")
 	}
 }
 
@@ -265,5 +296,119 @@ func TestForAll(t *testing.T) {
 	})
 	if !result {
 		t.Errorf("Expected all nodes to be parameters.")
+	}
+}
+
+func TestContainsRefGlobs(t *testing.T) {
+	cases := []struct {
+		input    string
+		want     bool
+		globbing bool
+	}{
+		{
+			input: "repo:foo",
+			want:  false,
+		},
+		{
+			input: "repo:foo@bar",
+			want:  false,
+		},
+		{
+			input: "repo:foo@*ref/tags",
+			want:  true,
+		},
+		{
+			input: "repo:foo@*!refs/tags",
+			want:  true,
+		},
+		{
+			input: "repo:foo@bar:*refs/heads",
+			want:  true,
+		},
+		{
+			input: "repo:foo@refs/tags/v3.14.3",
+			want:  false,
+		},
+		{
+			input: "repo:foo@*refs/tags/v3.14.?",
+			want:  true,
+		},
+		{
+			input:    "repo:*foo*@v3.14.3",
+			globbing: true,
+			want:     false,
+		},
+		{
+			input: "repo:foo@v3.14.3 repo:foo@*refs/tags/v3.14.* bar",
+			want:  true,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			query, err := Run(sequence(
+				Init(c.input, SearchTypeLiteral),
+				Globbing,
+			))
+			if err != nil {
+				t.Error(err)
+			}
+			got := ContainsRefGlobs(query)
+			if got != c.want {
+				t.Errorf("got %t, expected %t", got, c.want)
+			}
+		})
+	}
+}
+
+func TestHasTypeRepo(t *testing.T) {
+	tests := []struct {
+		query           string
+		wantHasTypeRepo bool
+	}{
+		{
+			query:           "sourcegraph type:repo",
+			wantHasTypeRepo: true,
+		},
+		{
+			query:           "sourcegraph type:symbol type:repo",
+			wantHasTypeRepo: true,
+		},
+		{
+			query:           "(sourcegraph type:repo) or (goreman type:repo)",
+			wantHasTypeRepo: true,
+		},
+		{
+			query:           "sourcegraph repohasfile:Dockerfile type:repo",
+			wantHasTypeRepo: true,
+		},
+		{
+			query:           "repo:sourcegraph type:repo",
+			wantHasTypeRepo: true,
+		},
+		{
+			query:           "repo:sourcegraph",
+			wantHasTypeRepo: false,
+		},
+		{
+			query:           "repository",
+			wantHasTypeRepo: false,
+		},
+		{
+			query:           "",
+			wantHasTypeRepo: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			q, err := ParseLiteral(tt.query)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := HasTypeRepo(q); got != tt.wantHasTypeRepo {
+				t.Fatalf("got %t, expected %t", got, tt.wantHasTypeRepo)
+			}
+		})
 	}
 }

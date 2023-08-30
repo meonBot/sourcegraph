@@ -12,30 +12,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# The grafana-wrapper has a dependency on internal/conf which makes its dependency
-# tree quite complicated. Cross-compile it separately before building the image.
+# Copy assets
+cp -R . "$BUILDDIR"
+
+# Build args for Go cross-compilation.
 export GO111MODULE=on
 export GOARCH=amd64
 export GOOS=linux
 export CGO_ENABLED=0
+
+# Cross-compile monitoring generator before building the image.
 go build \
   -trimpath \
-  -installsuffix netgo \
-  -tags "dist netgo" \
-  -o "$BUILDDIR"/.bin/grafana-wrapper ./cmd/grafana-wrapper
+  -o "$BUILDDIR"/.bin/monitoring-generator ../../monitoring
 
-# We copy just the monitoring directory and the root go.mod/go.sum so that we
-# do not need to send the entire repository as build context to Docker. Additionally,
-# we do not use a separate go.mod/go.sum in the monitoring/ directory because
-# editor tooling would occassionally include and not include it in the root
-# go.mod/go.sum.
-cp -R . "$BUILDDIR"
-cp -R ../../monitoring "$BUILDDIR"/
-cp ../../go.* "$BUILDDIR"/monitoring
+pushd "$BUILDDIR"
 
-cd "$BUILDDIR"
-
-# Enable image build caching via CACHE=true (the jsonnet builds can take a long time)
+# Enable image build caching via CACHE=true
 BUILD_CACHE="--no-cache"
 if [[ "$CACHE" == "true" ]]; then
   BUILD_CACHE=""
@@ -49,4 +42,4 @@ docker build ${BUILD_CACHE} -t "${IMAGE:-sourcegraph/grafana}" . \
   --build-arg VERSION
 
 # cd out of $BUILDDIR for cleanup
-cd -
+popd

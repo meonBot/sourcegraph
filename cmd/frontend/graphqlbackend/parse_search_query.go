@@ -49,7 +49,7 @@ func toJSON(node query.Node) interface{} {
 			Field:   n.Field,
 			Value:   n.Value,
 			Negated: n.Negated,
-			Labels:  query.Strings(n.Annotation.Labels),
+			Labels:  n.Annotation.Labels.String(),
 			Range:   n.Annotation.Range,
 		}
 	case query.Pattern:
@@ -61,7 +61,7 @@ func toJSON(node query.Node) interface{} {
 		}{
 			Value:   n.Value,
 			Negated: n.Negated,
-			Labels:  query.Strings(n.Annotation.Labels),
+			Labels:  n.Annotation.Labels.String(),
 			Range:   n.Annotation.Range,
 		}
 	}
@@ -69,7 +69,7 @@ func toJSON(node query.Node) interface{} {
 	return struct{}{}
 }
 
-func (*schemaResolver) ParseSearchQuery(ctx context.Context, args *struct {
+func (r *schemaResolver) ParseSearchQuery(ctx context.Context, args *struct {
 	Query       string
 	PatternType string
 }) (*JSONValue, error) {
@@ -84,13 +84,24 @@ func (*schemaResolver) ParseSearchQuery(ctx context.Context, args *struct {
 	default:
 		searchType = query.SearchTypeLiteral
 	}
-	q, err := query.ProcessAndOr(args.Query, searchType)
+
+	settings, err := decodedViewerFinalSettings(ctx, r.db)
+	if err != nil {
+		return nil, err
+	}
+
+	globbing := getBoolPtr(settings.SearchGlobbing, false)
+
+	plan, err := query.Pipeline(
+		query.Init(args.Query, searchType),
+		query.With(globbing, query.Globbing),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	var jsons []interface{}
-	for _, node := range q.(*query.AndOrQuery).Query {
+	for _, node := range plan.ToParseTree() {
 		jsons = append(jsons, toJSON(node))
 	}
 	json, err := json.Marshal(jsons)

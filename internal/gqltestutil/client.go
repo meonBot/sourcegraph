@@ -3,13 +3,15 @@ package gqltestutil
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/hashicorp/go-multierror"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
+
+	"github.com/sourcegraph/sourcegraph/internal/lazyregexp"
 )
 
 // NeedsSiteInit returns true if the instance hasn't done "Site admin init" step.
@@ -20,7 +22,7 @@ func NeedsSiteInit(baseURL string) (bool, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	p, err := ioutil.ReadAll(resp.Body)
+	p, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, errors.Wrap(err, "read body")
 	}
@@ -28,46 +30,42 @@ func NeedsSiteInit(baseURL string) (bool, error) {
 }
 
 // SiteAdminInit initializes the instance with given admin account.
-// It returns an authenticated client as the admin for doing e2e testing.
+// It returns an authenticated client as the admin for doing testing.
 func SiteAdminInit(baseURL, email, username, password string) (*Client, error) {
-	client, err := newClient(baseURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "new client")
-	}
+	return authenticate(baseURL, "/-/site-init", map[string]string{
+		"email":    email,
+		"username": username,
+		"password": password,
+	})
+}
 
-	var request = struct {
-		Email    string `json:"email"`
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}{
-		Email:    email,
-		Username: username,
-		Password: password,
-	}
-	err = client.authenticate("/-/site-init", request)
-	if err != nil {
-		return nil, errors.Wrap(err, "authenticate")
-	}
-
-	return client, nil
+// SignUp signs up a new user with given credentials.
+// It returns an authenticated client as the user for doing testing.
+func SignUp(baseURL, email, username, password string) (*Client, error) {
+	return authenticate(baseURL, "/-/sign-up", map[string]string{
+		"email":    email,
+		"username": username,
+		"password": password,
+	})
 }
 
 // SignIn performs the sign in with given user credentials.
-// It returns an authenticated client as the user for doing e2e testing.
+// It returns an authenticated client as the user for doing testing.
 func SignIn(baseURL, email, password string) (*Client, error) {
+	return authenticate(baseURL, "/-/sign-in", map[string]string{
+		"email":    email,
+		"password": password,
+	})
+}
+
+// authenticate initializes an authenticated client with given request body.
+func authenticate(baseURL, path string, body interface{}) (*Client, error) {
 	client, err := newClient(baseURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "new client")
 	}
 
-	var request = struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}{
-		Email:    email,
-		Password: password,
-	}
-	err = client.authenticate("/-/sign-in", request)
+	err = client.authenticate(path, body)
 	if err != nil {
 		return nil, errors.Wrap(err, "authenticate")
 	}
@@ -112,7 +110,7 @@ func newClient(baseURL string) (*Client, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	p, err := ioutil.ReadAll(resp.Body)
+	p, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "read GET body")
 	}
@@ -163,7 +161,7 @@ func (c *Client) authenticate(path string, body interface{}) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		p, err := ioutil.ReadAll(resp.Body)
+		p, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return errors.Wrap(err, "read response body")
 		}
@@ -220,6 +218,8 @@ func (c *Client) AuthenticatedUserID() string {
 	return c.userID
 }
 
+var graphqlQueryNameRe = lazyregexp.New(`(query|mutation) +(\w)+`)
+
 // GraphQL makes a GraphQL request to the server on behalf of the user authenticated by the client.
 // An optional token can be passed to impersonate other users. A nil target will skip unmarshalling
 // the returned JSON response.
@@ -232,7 +232,12 @@ func (c *Client) GraphQL(token, query string, variables map[string]interface{}, 
 		return err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/.api/graphql", c.baseURL), bytes.NewReader(body))
+	var name string
+	if matches := graphqlQueryNameRe.FindStringSubmatch(query); len(matches) >= 2 {
+		name = matches[2]
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/.api/graphql?%s", c.baseURL, name), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -240,7 +245,7 @@ func (c *Client) GraphQL(token, query string, variables map[string]interface{}, 
 		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 	} else {
 		// NOTE: We use this header to protect from CSRF attacks of HTTP API,
-		// see https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/cmd/frontend/internal/cli/http.go#L41-42
+		// see https://sourcegraph.com/github.com/sourcegraph/sourcegraph@0cf1f0ca7f64e44728ab122e3f7562da7b6b5042/-/blob/cmd/frontend/internal/cli/http.go#L41-42
 		req.Header.Set("X-Requested-With", "Sourcegraph")
 		req.AddCookie(c.csrfCookie)
 		req.AddCookie(c.sessionCookie)
@@ -252,7 +257,7 @@ func (c *Client) GraphQL(token, query string, variables map[string]interface{}, 
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return errors.Wrap(err, "read response body")
 	}
@@ -296,8 +301,24 @@ func (c *Client) Get(url string) (*http.Response, error) {
 		return nil, err
 	}
 
-	req.AddCookie(c.csrfCookie)
-	req.AddCookie(c.sessionCookie)
+	c.addCookies(req)
 
 	return http.DefaultClient.Do(req)
+}
+
+// Post performs a POST request to the URL with authenticated user.
+func (c *Client) Post(url string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	c.addCookies(req)
+
+	return http.DefaultClient.Do(req)
+}
+
+func (c *Client) addCookies(req *http.Request) {
+	req.AddCookie(c.csrfCookie)
+	req.AddCookie(c.sessionCookie)
 }

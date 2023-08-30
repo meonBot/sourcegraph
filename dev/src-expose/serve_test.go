@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -19,7 +19,7 @@ import (
 
 const testAddress = "test.local:3939"
 
-var discardLogger = log.New(ioutil.Discard, "", log.LstdFlags)
+var discardLogger = log.New(io.Discard, "", log.LstdFlags)
 
 func TestReposHandler(t *testing.T) {
 	cases := []struct {
@@ -43,6 +43,8 @@ func TestReposHandler(t *testing.T) {
 				Debug: discardLogger,
 				Addr:  testAddress,
 				Root:  root,
+
+				updatingServerInfo: 2, // disables background updates
 			}).handler()
 			if err != nil {
 				t.Fatal(err)
@@ -74,6 +76,8 @@ func TestReposHandler(t *testing.T) {
 				Debug: discardLogger,
 				Addr:  testAddress,
 				Root:  root,
+
+				updatingServerInfo: 2, // disables background updates
 			}).handler()
 			if err != nil {
 				t.Fatal(err)
@@ -98,7 +102,7 @@ func testReposHandler(t *testing.T, h http.Handler, repos []Repo) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		b, err := ioutil.ReadAll(res.Body)
+		b, err := io.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil {
 			t.Fatal(err)
@@ -145,7 +149,7 @@ func testReposHandler(t *testing.T, h http.Handler, repos []Repo) {
 }
 
 func gitInitRepos(t *testing.T, names ...string) string {
-	root, err := ioutil.TempDir("", "")
+	root, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +171,7 @@ func gitInitRepos(t *testing.T, names ...string) string {
 }
 
 func TestIgnoreGitSubmodules(t *testing.T) {
-	root, err := ioutil.TempDir("", "")
+	root, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +181,7 @@ func TestIgnoreGitSubmodules(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(root, "dir", ".git"), []byte("ignore me please"), os.ModePerm); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "dir", ".git"), []byte("ignore me please"), os.ModePerm); err != nil {
 		t.Fatal(err)
 	}
 
@@ -185,6 +189,8 @@ func TestIgnoreGitSubmodules(t *testing.T) {
 		Info:  testLogger(t),
 		Debug: discardLogger,
 		Root:  root,
+
+		updatingServerInfo: 2, // disables background updates
 	}).configureRepos()
 	if len(repos) != 0 {
 		t.Fatalf("expected no repos, got %v", repos)

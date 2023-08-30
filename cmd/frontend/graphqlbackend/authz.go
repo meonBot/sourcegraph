@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/graph-gophers/graphql-go"
-	"github.com/pkg/errors"
 )
 
 type AuthzResolver interface {
@@ -21,44 +20,6 @@ type AuthzResolver interface {
 	// Helpers
 	RepositoryPermissionsInfo(ctx context.Context, repoID graphql.ID) (PermissionsInfoResolver, error)
 	UserPermissionsInfo(ctx context.Context, userID graphql.ID) (PermissionsInfoResolver, error)
-}
-
-var authzInEnterprise = errors.New("authorization mutations and queries are only available in enterprise")
-
-type defaultAuthzResolver struct{}
-
-var DefaultAuthzResolver AuthzResolver = defaultAuthzResolver{}
-
-func (defaultAuthzResolver) SetRepositoryPermissionsForUsers(ctx context.Context, args *RepoPermsArgs) (*EmptyResponse, error) {
-	return nil, authzInEnterprise
-}
-
-func (defaultAuthzResolver) ScheduleRepositoryPermissionsSync(ctx context.Context, args *RepositoryIDArgs) (*EmptyResponse, error) {
-	return nil, authzInEnterprise
-}
-
-func (defaultAuthzResolver) ScheduleUserPermissionsSync(ctx context.Context, args *UserIDArgs) (*EmptyResponse, error) {
-	return nil, authzInEnterprise
-}
-
-func (defaultAuthzResolver) AuthorizedUserRepositories(ctx context.Context, args *AuthorizedRepoArgs) (RepositoryConnectionResolver, error) {
-	return nil, authzInEnterprise
-}
-
-func (defaultAuthzResolver) UsersWithPendingPermissions(ctx context.Context) ([]string, error) {
-	return nil, authzInEnterprise
-}
-
-func (defaultAuthzResolver) AuthorizedUsers(ctx context.Context, args *RepoAuthorizedUserArgs) (UserConnectionResolver, error) {
-	return nil, authzInEnterprise
-}
-
-func (defaultAuthzResolver) RepositoryPermissionsInfo(ctx context.Context, repoID graphql.ID) (PermissionsInfoResolver, error) {
-	return nil, authzInEnterprise
-}
-
-func (defaultAuthzResolver) UserPermissionsInfo(ctx context.Context, userID graphql.ID) (PermissionsInfoResolver, error) {
-	return nil, authzInEnterprise
 }
 
 type RepositoryIDArgs struct {
